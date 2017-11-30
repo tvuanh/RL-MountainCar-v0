@@ -15,7 +15,7 @@ def preprocess_state(state):
 
 class Controller(object):
 
-    def __init__(self, n_input, n_output, n_hidden=30, gamma=0.9, batch_size=10, model_instances=2):
+    def __init__(self, n_input, n_output, n_hidden=30, gamma=1.0, batch_size=10, model_instances=2):
         self.n_input = n_input
         self.n_output = n_output
         self.n_hidden = n_hidden
@@ -47,9 +47,9 @@ class Controller(object):
             self.action_models.append(model)
 
     def memorize(self, state, action, reward, next_state, done):
-        mem = self.memory.get(reward)
-        if mem is None:
-            mem = deque(maxlen=10 * self.batch_size * self.model_instances)
+        mem = self.memory.get(
+            reward, deque(maxlen=10 * self.batch_size * self.model_instances)
+        )
         mem.append(
         (
             preprocess_state(state),
@@ -115,11 +115,10 @@ def play(episodes, verbose=False):
         intra_episode_total_reward = 0
         steps = 0
         while not done:
-            if episode < 1000:
+            if episode < 200:
                 action = controller.random_action(state)
             else:
                 action = controller.optimal_action(state)
-                # print("   state {} action {}".format(state, action))
             next_state, reward, done, _ = env.step(action)
             controller.memorize(state, action, reward, next_state, done)
             state = next_state
