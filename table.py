@@ -7,14 +7,16 @@ import gym
 
 class Controller(object):
 
-    def __init__(self, lows, highs, n_bins, n_actions, gamma=1.0, epsilon=0.02):
+    def __init__(self, lows, highs, n_bins, n_actions, gamma=1.0, epsilon=0.02, lamb=0.5):
         self.lows = lows
         self.highs = highs
         self.n_bins = n_bins
         self.n_actions = n_actions
         self.Qtable = np.zeros((n_bins, n_bins, n_actions))
+        self.trace = np.zeros((n_bins, n_bins, n_actions))
         self.gamma = gamma
         self.epsilon = epsilon
+        self.lamb = lamb
 
     def discretize(self, state):
         steps = (self.highs - self.lows) / self.n_bins
@@ -31,9 +33,11 @@ class Controller(object):
 
     def train(self, state, action, reward, next_state, alpha):
         ix, iy = self.discretize(state)
+        self.trace[ix, iy, action] = 1
         next_ix, next_iy = self.discretize(next_state)
-        update = reward + self.gamma * np.max(self.Qtable[next_ix, next_iy])
-        self.Qtable[ix, iy, action] += alpha * (update - self.Qtable[ix, iy, action])
+        delta = reward + self.gamma * np.max(self.Qtable[next_ix, next_iy]) - self.Qtable[ix, iy, action]
+        self.Qtable += alpha * delta * self.trace
+        self.trace *= self.gamma * self.lamb
 
 
 if __name__ == "__main__":
@@ -50,7 +54,7 @@ if __name__ == "__main__":
     benchmark = -110.
     episodes = 20000
     initial_alpha = 1.0 # Learning rate
-    min_alpha = 0.003
+    min_alpha = 0.01
 
     for episode in range(episodes):
         state = env.reset()
